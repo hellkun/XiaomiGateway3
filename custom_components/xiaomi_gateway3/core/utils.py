@@ -53,7 +53,7 @@ DEVICES = [{
     'params': [
         ['0.12.85', 'load_power', 'power', 'sensor'],
         ['0.13.85', None, 'consumption', 'sensor'],
-        ['4.1.85', 'channel_0', 'switch', 'switch'],  # to4ko
+        ['4.1.85', 'channel_0', 'switch', 'switch'],  # @to4ko
     ]
 }, {
     'lumi.ctrl_ln1': ["Aqara", "Single Wall Switch", "QBKG11LM"],
@@ -86,8 +86,14 @@ DEVICES = [{
         [None, None, 'action', 'sensor'],
     ]
 }, {
-    # on/off
     'lumi.ctrl_neutral1': ["Aqara", "Single Wall Switch", "QBKG04LM"],
+    'params': [
+        ['4.1.85', 'neutral_0', 'switch', 'switch'],  # @vturekhanov
+        ['13.1.85', None, 'button', None],
+        [None, None, 'action', 'sensor'],
+    ]
+}, {
+    # on/off
     'lumi.switch.b1lacn02': ["Aqara", "Single Wall Switch D1", "QBKG21LM"],
     'params': [
         ['4.1.85', 'channel_0', 'switch', 'switch'],  # or neutral_0?
@@ -98,8 +104,8 @@ DEVICES = [{
     # dual channel on/off
     'lumi.ctrl_neutral2': ["Aqara", "Double Wall Switch", "QBKG03LM"],
     'params': [
-        ['4.1.85', 'neutral_0', 'channel 1', 'switch'],  # to4ko
-        ['4.2.85', 'neutral_1', 'channel 2', 'switch'],
+        ['4.1.85', 'neutral_0', 'channel 1', 'switch'],  # @to4ko
+        ['4.2.85', 'neutral_1', 'channel 2', 'switch'],  # @to4ko
         ['13.1.85', None, 'button_1', None],
         ['13.2.85', None, 'button_2', None],
         ['13.5.85', None, 'button_both', None],
@@ -119,9 +125,9 @@ DEVICES = [{
     # triple channel on/off, no neutral wire
     'lumi.switch.l3acn3': ["Aqara", "Triple Wall Switch D1", "QBKG25LM"],
     'params': [
-        ['4.1.85', 'neutral_0', 'channel 1', 'switch'],  # to4ko
-        ['4.2.85', 'neutral_1', 'channel 2', 'switch'],
-        ['4.3.85', 'neutral_2', 'channel 3', 'switch'],
+        ['4.1.85', 'neutral_0', 'channel 1', 'switch'],  # @to4ko
+        ['4.2.85', 'neutral_1', 'channel 2', 'switch'],  # @to4ko
+        ['4.3.85', 'neutral_2', 'channel 3', 'switch'],  # @to4ko
         ['13.1.85', None, 'button_1', None],
         ['13.2.85', None, 'button_2', None],
         ['13.3.85', None, 'button_3', None],
@@ -252,6 +258,7 @@ DEVICES = [{
     # motion sensor with illuminance
     'lumi.sensor_motion.aq2': ["Aqara", "Motion Sensor", "RTCGQ11LM"],
     'params': [
+        ['0.3.85', 'lux', 'illuminance_lux', None],
         ['0.4.85', 'illumination', 'illuminance', 'sensor'],
         ['3.1.85', None, 'motion', 'binary_sensor'],
         ['8.0.2001', 'battery', 'battery', 'sensor'],
@@ -325,9 +332,9 @@ DEVICES = [{
     # https://github.com/AlexxIT/XiaomiGateway3/issues/101
     'lumi.airrtc.tcpecn02': ["Aqara", "Thermostat S2", "KTWKQ03ES"],
     'params': [
-        ['3.1.85', None, 'power', None],
+        ['3.1.85', 'power_status', 'power', None],
         ['3.2.85', None, 'current_temperature', None],
-        ['14.2.85', None, 'climate', 'climate'],
+        ['14.2.85', 'ac_state', 'climate', 'climate'],
         ['14.8.85', None, 'mode', None],
         ['14.9.85', None, 'target_temperature', None],
         ['14.10.85', None, 'fan_mode', None],
@@ -338,12 +345,18 @@ DEVICES = [{
         ['13.1.85', None, 'channels', 'sensor']
     ]
 }, {
-    # without N
-    'lumi.switch.l0agl1': ["Aqara", "Relay T1", "DLKZMK12LM"],
-    # with N, SSM-U01?
-    'lumi.switch.n0agl1': ["Aqara", "Relay T1"],
+    # no N, https://www.aqara.com/en/single_switch_T1_no-neutral.html
+    'lumi.switch.l0agl1': ["Aqara", "Relay T1", "SSM-U02"],
     'mi_spec': [
         ['2.1', '2.1', 'switch', 'switch'],
+    ]
+}, {
+    # with N, https://www.aqara.com/en/single_switch_T1_with-neutral.html
+    'lumi.switch.n0agl1': ["Aqara", "Relay T1", "SSM-U01"],
+    'mi_spec': [
+        ['2.1', '2.1', 'switch', 'switch'],
+        ['3.2', '3.2', 'power', 'sensor'],
+        # ['5.7', '5.7', 'voltage', 'sensor'],
     ]
 }, {
     'lumi.motion.agl04': ["Aqara", "Precision Motion Sensor", "RTCGQ13LM"],
@@ -405,10 +418,12 @@ CLUSTERS = {
     0xFCC0: 'Xiaomi'
 }
 
+RE_ZIGBEE_MODEL_TAIL = re.compile(r'\.v\d$')
+
 
 def get_device(zigbee_model: str) -> Optional[dict]:
-    # the model has an extra tail when added
-    if zigbee_model.endswith(('.v1', '.v2')):
+    # the model has an extra tail when added (v1, v2, v3)
+    if RE_ZIGBEE_MODEL_TAIL.search(zigbee_model):
         zigbee_model = zigbee_model[:-3]
 
     for device in DEVICES:
@@ -438,7 +453,13 @@ def fix_xiaomi_props(params) -> dict:
         elif k == 'battery' and v and v > 1000:
             params[k] = round((min(v, 3200) - 2500) / 7)
         elif k == 'run_state':
-            params[k] = ['offing', 'oning', 'stop', 'hander_stop'].index(v)
+            # https://github.com/AlexxIT/XiaomiGateway3/issues/139
+            if v == 'offing':
+                params[k] = 0
+            elif v == 'oning':
+                params[k] = 1
+            else:
+                params[k] = 2
 
     return params
 
