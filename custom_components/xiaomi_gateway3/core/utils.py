@@ -249,7 +249,6 @@ DEVICES = [{
 }, {
     # motion sensor
     'lumi.sensor_motion': ["Xiaomi", "Motion Sensor", "RTCGQ01LM"],
-    'lumi.motion.agl04': ["Aqara", "Precision Motion Sensor", "RTCGQ13LM"],
     'params': [
         ['3.1.85', None, 'motion', 'binary_sensor'],
         ['8.0.2001', 'battery', 'battery', 'sensor'],
@@ -554,6 +553,9 @@ class XiaomiGateway3Debug(logging.Handler, HomeAssistantView):
 
     async def get(self, request: web.Request):
         try:
+            if 'c' in request.query:
+                self.text = ''
+
             if 'q' in request.query or 't' in request.query:
                 lines = self.text.split('\n')
 
